@@ -1,0 +1,68 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split,cross_val_score
+from sklearn.svm import SVC
+
+# 读取数据
+data = pd.read_csv('krkopt.DATA',header=None)
+data.dropna(inplace=True)
+
+# 将样本数值化
+for i in [0,2,4]:
+    data.loc[data[i]=='a',i] = 1
+    data.loc[data[i]=='b',i] = 2
+    data.loc[data[i]=='c',i] = 3
+    data.loc[data[i]=='d',i] = 4
+    data.loc[data[i]=='e',i] = 5
+    data.loc[data[i]=='f',i] = 6
+    data.loc[data[i]=='g',i] = 7
+    data.loc[data[i]=='h',i] = 8
+# 将标签数值化
+data.loc[data[6]!='draw',6] = -1
+data.loc[data[6]=='draw',6] = 1
+# 归一化处理
+for i in range(6):
+    data[i] = (data[i]-data[i].mean())/data[i].std()
+# 拆分训练集和测试集
+X_train, X_test, y_train, y_test =  train_test_split(data.iloc[:,:6],data[6].astype(int),test_size=0.82178500142572)
+
+# 寻找C和gamma的粗略范围
+CScale = [i for i in range(100,201,10)];
+gammaScale = [i/10 for i in range(1,11)];
+cv_scores = 0
+for i in CScale:
+    for j in gammaScale:
+        model = SVC(kernel = 'rbf', C = i,gamma=j)
+        scores = cross_val_score(model,X_train, y_train,cv =5,scoring = 'accuracy')
+        if scores.mean()>cv_scores:
+            cv_scores = scores.mean()
+            savei = i
+            savej = j*100
+print(i, j);
+print(scores);
+
+# # 找到更精确的C和gamma
+CScale = [i for i in range(savei-5,savei+5)];
+gammaScale = [i/100+0.01 for i in range(int(savej)-5,int(savej)+5)];
+cv_scores = 0
+for i in CScale:
+    for j in gammaScale:
+        model = SVC(kernel = 'rbf', C = i,gamma=j)
+        scores = cross_val_score(model,X_train, y_train,cv =5,scoring = 'accuracy')
+        # print(i, j);
+        # print(scores);
+        if scores.mean()>cv_scores:
+            cv_scores = scores.mean()
+            savei = i
+            savej = j
+print(i, j);
+print(scores);
+
+
+
+#将确定好的参数重新建立svm模型
+model = SVC(kernel = 'rbf', C=savei,gamma=savej)
+model.fit(X_train, y_train)
+pre = model.predict(X_test)
+model.score(X_test,y_test)
+
+print(model.score(X_test,y_test));
